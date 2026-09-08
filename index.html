@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crystal Banquet Hall | Booking & Accounting System</title>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+<style>
+*{box-sizing:border-box}
+body{
+    margin:0;
+    font-family:Arial,Helvetica,sans-serif;
+    background:#f5f3ef;
+    color:#252525;
+}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+
+.topbar{
+    background:#fff;
+    border-bottom:1px solid #ddd;
+    padding:14px 22px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+}
+.brand{display:flex;align-items:center;gap:12px}
+.brand img{width:55px;height:55px;object-fit:cover;border-radius:50%}
+.brand h1{margin:0;font-family:Georgia,serif;font-size:22px}
+.brand p{margin:2px 0 0;color:#777;font-size:12px}
+
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.toolbar button,.toolbar select{
+    padding:8px 12px;
+    border:1px solid #ccc;
+    border-radius:7px;
+    background:#fff;
+}
+.user-badge{
+    background:#e9ecef;
+    padding:8px 12px;
+    border-radius:7px;
+    font-size:12px;
+    font-weight:bold;
+    color:#333;
+    border:1px solid #ced4da;
+    display:flex;
+    align-items:center;
+    gap:6px;
+}
+.primary{background:#b9823e!important;color:#fff;border-color:#b9823e!important}
+
+.container{max-width:1600px;margin:auto;padding:18px}
+
+.dashboard{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:10px;
+    margin-bottom:15px;
+}
+.card{
+    background:#fff;
+    border:1px solid #e2dfda;
+    border-radius:10px;
+    padding:12px;
+    cursor:pointer;
+    transition:transform 0.1s ease;
+}
+.card:hover{transform:translateY(-2px);box-shadow:0 4px 10px rgba(0,0,0,0.08)}
+.card small{color:#777;font-weight:bold;font-size:11px}
+.card strong{display:block;font-size:18px;margin-top:4px}
+
+/* Color Legend Styling */
+.top-legend{
+    display:flex;
+    gap:15px;
+    background:#fff;
+    padding:10px 15px;
+    border-radius:8px;
+    border:1px solid #e2dfda;
+    margin-bottom:15px;
+    align-items:center;
+    flex-wrap:wrap;
+}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:bold;color:#444}
+.legend-dot{width:14px;height:14px;border-radius:3px;display:inline-block}
+
+.search{
+    background:#fff;padding:10px;border-radius:10px;border:1px solid #e2dfda;
+    margin-bottom:15px;
+    display:flex;
+    gap:10px;
+}
+.search input{flex:1;padding:10px;border:1px solid #ccc;border-radius:7px;font-size:14px}
+.calendar-head{
+    display:flex;justify-content:space-between;align-items:center;margin-bottom:12px
+}
+.calendar-head h2{margin:0;font-family:Georgia,serif}
+
+.month-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:16px;
+}
+.month{
+    background:#fff;
+    border:1px solid #dedbd6;
+    border-radius:12px;
+    padding:11px;
+    box-shadow:0 2px 7px rgba(0,0,0,.05);
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+}
+.month-title{
+    text-align:center;
+    font-family:Georgia,serif;
+    font-size:17px;
+    font-weight:bold;
+    margin-bottom:8px;
+}
+.weekdays,.days{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:3px;
+}
+.weekdays div{
+    text-align:center;font-size:10px;color:#777;padding:4px 0;font-weight:bold
+}
+.day{
+    min-height:82px;
+    border:1px solid #ece9e4;
+    border-radius:5px;
+    padding:4px;
+    background:#fff;
+    cursor:pointer;
+}
+.day:hover{border-color:#b9823e}
+.day.today{outline:2px solid #b9823e}
+.day-number{font-size:11px;font-weight:bold}
+
+.event{
+    margin-top:4px;
+    border-radius:5px;
+    padding:4px 5px;
+    font-size:9px;
+    line-height:1.2;
+    color:#fff;
+    cursor:pointer;
+}
+.event strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.event small{display:block;opacity:.9}
+
+/* Status Colors */
+.confirmed{background:#d62828!important;color:#fff!important}
+.inquiry_tentative{background:#e4b400!important;color:#171717!important}
+.date_hold{background:#6f42c1!important;color:#fff!important}
+.cancelled{background:#6c757d!important;color:#fff!important}
+
+.month-summary{
+    border-top:1px solid #eee;
+    margin-top:10px;
+    padding-top:8px;
+    background:#fcfbf9;
+    border-radius:6px;
+    padding:8px;
+}
+.summary-title{font-size:10px;font-weight:bold;color:#b9823e;margin-bottom:5px;text-transform:uppercase}
+.summary-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:4px;
+    font-size:9.5px;
+    color:#444;
+}
+.summary-grid div strong{color:#000}
+
+.modal{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,.58);
+    z-index:1000;overflow:auto;padding:20px 10px;
+}
+.modal-box{
+    background:#fff;max-width:700px;margin:auto;border-radius:12px;padding:20px;
+}
+.modal-head{
+    display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;
+    border-bottom:1px solid #eee;padding-bottom:10px;
+}
+.modal-head h2{margin:0;font-family:Georgia,serif}
+.close{font-size:26px;cursor:pointer;color:#777}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group.full{grid-column:1/-1}
+.form-group label{font-size:11px;font-weight:bold;color:#555}
+.form-group input,.form-group select,.form-group textarea{
+    padding:8px;border:1px solid #ccc;border-radius:6px
+}
+.form-group textarea{min-height:70px;resize:vertical}
+.modal-actions{
+    display:flex;justify-content:flex-end;gap:8px;margin-top:15px;
+}
+.danger{background:#d62828;color:#fff;border:0;padding:8px 14px;border-radius:6px}
+.gold{background:#b9823e;color:#fff;border:0;padding:8px 14px;border-radius:6px}
+
+.print-receipt{
+    border:1px solid #ddd;padding:15px;border-radius:8px;background:#faf9f6;
+}
+.print-receipt table{width:100%;border-collapse:collapse;margin-top:10px}
+.print-receipt td,.print-receipt th{border:1px solid #ccc;padding:7px;font-size:12px;text-align:left}
+
+@media(max-width:1100px){.month-grid{grid-template-columns:repeat(2,1fr)}.dashboard{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:700px){.month-grid{grid-template-columns:1fr}.dashboard{grid-template-columns:repeat(2,1fr)}.form-grid{grid-template-columns:1fr}.form-group.full{grid-column:auto}}
+
+@media print{
+    body *{visibility:hidden}
+    .print-receipt, .print-receipt *{visibility:visible}
+    .print-receipt{position:absolute;left:0;top:0;width:100%;border:none;background:#fff}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+    <div class="brand">
+        <img src="https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=150&auto=format&fit=crop&q=80" alt="Logo">
+        <div>
+            <h1>Crystal Banquet Hall</h1>
+            <p>Booking & Financial Management System</p>
+        </div>
+    </div>
+    <div class="toolbar">
+        <div class="user-badge">
+            <span id="activeUserDisplay">👤 Admin</span>
+            <button onclick="openLoginModal()" style="padding:2px 6px;font-size:10px;margin-left:4px">Switch User</button>
+        </div>
+
+        <select id="yearSelect" onchange="changeYear(this.value)">
+            <option value="2026">2026</option>
+            <option value="2027">2027</option>
+            <option value="2028">2028</option>
+            <option value="2029">2029</option>
+            <option value="2030">2030</option>
+        </select>
+        <select id="monthSelect" onchange="changeMonthFilter(this.value)">
+            <option value="all">All Months</option>
+            <option value="0">January</option>
+            <option value="1">February</option>
+            <option value="2">March</option>
+            <option value="3">April</option>
+            <option value="4">May</option>
+            <option value="5">June</option>
+            <option value="6">July</option>
+            <option value="7">August</option>
+            <option value="8">September</option>
+            <option value="9">October</option>
+            <option value="10">November</option>
+            <option value="11">December</option>
+        </select>
+        <button class="primary" onclick="openAddModal()">+ New Booking</button>
+        <button onclick="window.print()">Print Calendar</button>
+    </div>
+</div>
+<div class="container">
+    <!-- Color Legend Bar -->
+    <div class="top-legend">
+        <span class="legend-item"><span class="legend-dot" style="background:#d62828"></span> Confirmed</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#e4b400"></span> Inquiry & Tentative</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#6f42c1"></span> Date Hold</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#6c757d"></span> Cancelled</span>
+    </div>
+
+    <!-- Dashboard Cards -->
+    <div class="dashboard">
+        <div class="card" onclick="filterByStatus('all')"><small>Total Events</small><strong id="statTotal">0</strong></div>
+        <div class="card" onclick="filterByStatus('confirmed')"><small>Confirmed</small><strong id="statConfirmed" style="color:#d62828">0</strong></div>
+        <div class="card" onclick="filterByStatus('inquiry_tentative')"><small>Inquiry / Tentative</small><strong id="statTentative" style="color:#e4b400">0</strong></div>
+        <div class="card" onclick="filterByStatus('date_hold')"><small>Date Hold</small><strong id="statHold" style="color:#6f42c1">0</strong></div>
+        <div class="card" onclick="filterByStatus('all')"><small>Total Revenue</small><strong id="statRevenue" style="color:#b9823e">BHD 0</strong></div>
+        <div class="card" onclick="filterByStatus('all')"><small>Advance Paid</small><strong id="statAdvance" style="color:#28a745">BHD 0</strong></div>
+        <div class="card" onclick="filterByStatus('all')"><small>Pending Balance</small><strong id="statPending" style="color:#d62828">BHD 0</strong></div>
+    </div>
+
+    <div class="search">
+        <input type="text" id="searchInput" placeholder="Search Phone, Client, Title, Notes, Created By..." oninput="handleSearch()">
+        <select id="statusFilterSelect" onchange="handleFilterChange(this.value)">
+            <option value="all">All Statuses</option>
+            <option value="confirmed">Confirmed Only</option>
+            <option value="inquiry_tentative">Inquiries Only</option>
+            <option value="date_hold">Date Hold Only</option>
+            <option value="cancelled">Cancelled Only</option>
+        </select>
+    </div>
+
+    <div class="calendar-head">
+        <h2 id="calendarTitle">Calendar</h2>
+    </div>
+
+    <div class="month-grid" id="monthGrid"></div>
+</div>
+
+<!-- Login / User Switch Modal -->
+<div class="modal" id="loginModal">
+    <div class="modal-box" style="max-width:380px;">
+        <div class="modal-head">
+            <h2>User Login / Switch</h2>
+            <span class="close" onclick="closeModal('loginModal')">&times;</span>
+        </div>
+        <form id="loginForm" onsubmit="handleLogin(event)">
+            <div class="form-group" style="margin-bottom:12px">
+                <label>Select User</label>
+                <select id="loginUserSelect">
+                    <option value="Admin">Admin</option>
+                    <option value="MD">MD</option>
+                    <option value="Sales">Sales</option>
+                    <option value="Account">Account</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom:15px">
+                <label>Password PIN</label>
+                <input type="password" id="loginPassword" placeholder="Enter PIN Password" required>
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="gold" style="width:100%">Login</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add/Edit Booking Modal -->
+<div class="modal" id="eventModal">
+    <div class="modal-box">
+        <div class="modal-head">
+            <h2 id="modalTitle">New Event Booking</h2>
+            <span class="close" onclick="closeModal('eventModal')">&times;</span>
+        </div>
+        <form id="eventForm" onsubmit="saveEvent(event)">
+            <input type="hidden" id="eventId">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Event Title</label>
+                    <input type="text" id="eventTitle" placeholder="e.g. Wedding Reception" required>
+                </div>
+                <div class="form-group">
+                    <label>Client Name</label>
+                    <input type="text" id="clientName" placeholder="Client Name" required>
+                </div>
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <input type="text" id="clientPhone" placeholder="Phone Number" required>
+                </div>
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="date" id="eventDate" required>
+                </div>
+                <div class="form-group">
+                    <label>Start Time</label>
+                    <input type="time" id="startTime" required>
+                </div>
+                <div class="form-group">
+                    <label>End Time</label>
+                    <input type="time" id="endTime" required>
+                </div>
+                <div class="form-group">
+                    <label>Booking Status</label>
+                    <select id="eventStatus">
+                        <option value="confirmed">Confirmed</option>
+                        <option value="inquiry_tentative">Inquiry & Tentative</option>
+                        <option value="date_hold">Date Hold</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Guest Count</label>
+                    <input type="number" id="guestCount" placeholder="e.g. 200" oninput="calculateTotalFromPerPerson()">
+                </div>
+                <div class="form-group">
+                    <label>Price Per Person (BHD)</label>
+                    <input type="number" step="0.001" id="perPersonRate" placeholder="0.000" oninput="calculateTotalFromPerPerson()">
+                </div>
+                <div class="form-group">
+                    <label>Total Price (BHD)</label>
+                    <input type="number" step="0.001" id="eventAmount" placeholder="0.000" oninput="calculatePending()">
+                </div>
+                <div class="form-group">
+                    <label>Advance Amount (BHD)</label>
+                    <input type="number" step="0.001" id="advanceAmount" placeholder="0.000" oninput="calculatePending()">
+                </div>
+                <div class="form-group">
+                    <label>Pending Balance (BHD)</label>
+                    <input type="number" step="0.001" id="pendingAmount" placeholder="0.000" readonly style="background:#eee">
+                </div>
+                <div class="form-group full">
+                    <label>Include in Official System Ledger?</label>
+                    <select id="includeInSystem">
+                        <option value="Yes">Yes - Add Guest Payment to System Ledger</option>
+                        <option value="No">No - Do Not Add to System Ledger</option>
+                    </select>
+                </div>
+                <div class="form-group full">
+                    <label>Catering & Special Notes</label>
+                    <textarea id="eventNotes" placeholder="Food menu, outdoor catering, setup details..."></textarea>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" onclick="closeModal('eventModal')">Cancel</button>
+                <button type="submit" class="gold">Save Booking</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Customer Details Modal -->
+<div class="modal" id="detailsModal">
+    <div class="modal-box">
+        <div class="modal-head">
+            <h2>Booking & Customer Details</h2>
+            <span class="close" onclick="closeModal('detailsModal')">&times;</span>
+        </div>
+        <div class="print-receipt" id="detailsBody"></div>
+        <div class="modal-actions">
+            <button class="primary" onclick="printCustomerReceipt()">Print Customer Details</button>
+            <button class="gold" id="btnEditEvent" onclick="editCurrentEvent()">Edit Booking</button>
+            <button class="danger" id="btnDeleteEvent" onclick="deleteCurrentEvent()">Delete Booking</button>
+            <button onclick="closeModal('detailsModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// --- FIREBASE INITIALIZATION ---
+const firebaseConfig = {
+  apiKey: "AIzaSyBmJf49jac-uofzVgBQ-9Frtgn4ngIqoms",
+  authDomain: "crystal-banquet-hall.firebaseapp.com",
+  projectId: "crystal-banquet-hall",
+  storageBucket: "crystal-banquet-hall.firebasestorage.app",
+  messagingSenderId: "881510361545",
+  appId: "1:881510361545:web:eeba3608ad85b4a0a76018"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// User Credentials & Password Logic
+const userCredentials = {
+    "Admin": "3307",
+    "MD": "1111",
+    "Sales": "0000",
+    "Account": "2222"
+};
+
+let currentUser = "Admin"; // Default Active User
+
+// Application Variables
+const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+let currentYear = 2026;
+let currentMonthFilter = "all";
+let activeStatusFilter = "all";
+let searchQuery = "";
+let selectedEventId = null;
+
+let events = [];
+
+function openLoginModal() {
+    document.getElementById("loginPassword").value = "";
+    document.getElementById("loginModal").style.display = "block";
+}
+
+function handleLogin(e) {
+    e.preventDefault();
+    const selectedUser = document.getElementById("loginUserSelect").value;
+    const enteredPass = document.getElementById("loginPassword").value;
+
+    if (userCredentials[selectedUser] === enteredPass) {
+        currentUser = selectedUser;
+        document.getElementById("activeUserDisplay").innerText = "👤 " + currentUser;
+        closeModal("loginModal");
+        alert(`Successfully logged in as ${currentUser}`);
+        renderCalendar();
+    } else {
+        alert("Incorrect Password PIN! Please try again.");
+    }
+}
+
+function calculateTotalFromPerPerson() {
+    const guests = parseFloat(document.getElementById("guestCount").value) || 0;
+    const rate = parseFloat(document.getElementById("perPersonRate").value) || 0;
+    if (guests > 0 && rate > 0) {
+        const total = guests * rate;
+        document.getElementById("eventAmount").value = total.toFixed(3);
+        calculatePending();
+    }
+}
+
+function calculatePending() {
+    const total = parseFloat(document.getElementById("eventAmount").value) || 0;
+    const adv = parseFloat(document.getElementById("advanceAmount").value) || 0;
+    document.getElementById("pendingAmount").value = Math.max(0, total - adv).toFixed(3);
+}
+function listenToFirebaseEvents() {
+    db.collection("bookings").onSnapshot((snapshot) => {
+        events = [];
+        snapshot.forEach((doc) => {
+            events.push({ id: doc.id, ...doc.data() });
+        });
+        renderCalendar();
+    }, (error) => {
+        console.error("Firebase fetch error:", error);
+    });
+}
+
+function init() {
+    document.getElementById("yearSelect").value = currentYear;
+    listenToFirebaseEvents();
+}
+
+function changeYear(val) {
+    currentYear = parseInt(val);
+    renderCalendar();
+}
+
+function changeMonthFilter(val) {
+    currentMonthFilter = val;
+    renderCalendar();
+}
+
+function filterByStatus(status) {
+    activeStatusFilter = status;
+    document.getElementById("statusFilterSelect").value = status;
+    renderCalendar();
+}
+
+function handleFilterChange(val) {
+    activeStatusFilter = val;
+    renderCalendar();
+}
+
+function handleSearch() {
+    searchQuery = document.getElementById("searchInput").value.toLowerCase().trim();
+    renderCalendar();
+
+    if (searchQuery.length >= 3) {
+        const matchedEvent = events.find(e => 
+            (e.phone && e.phone.toLowerCase().includes(searchQuery)) ||
+            (e.client && e.client.toLowerCase().includes(searchQuery))
+        );
+        if (matchedEvent) {
+            openDetailsModal(matchedEvent.id);
+        }
+    }
+}
+
+function renderCalendar() {
+    const grid = document.getElementById("monthGrid");
+    grid.innerHTML = "";
+
+    document.getElementById("calendarTitle").innerText = `${currentYear} Booking Calendar`;
+
+    let startMonth = currentMonthFilter === "all" ? 0 : parseInt(currentMonthFilter);
+    let endMonth = currentMonthFilter === "all" ? 11 : parseInt(currentMonthFilter);
+
+    for (let m = startMonth; m <= endMonth; m++) {
+        const monthDiv = document.createElement("div");
+        monthDiv.className = "month";
+
+        const topContainer = document.createElement("div");
+
+        const titleDiv = document.createElement("div");
+        titleDiv.className = "month-title";
+        titleDiv.innerText = `${monthNames[m]} ${currentYear}`;
+        topContainer.appendChild(titleDiv);
+
+        const weekdaysDiv = document.createElement("div");
+        weekdaysDiv.className = "weekdays";
+        dayNames.forEach(d => {
+            const dDiv = document.createElement("div");
+            dDiv.innerText = d;
+            weekdaysDiv.appendChild(dDiv);
+        });
+        topContainer.appendChild(weekdaysDiv);
+
+        const daysDiv = document.createElement("div");
+        daysDiv.className = "days";
+
+        const firstDay = new Date(currentYear, m, 1).getDay();
+        const daysInMonth = new Date(currentYear, m + 1, 0).getDate();
+
+        for (let i = 0; i < firstDay; i++) {
+            const emptyCell = document.createElement("div");
+            emptyCell.style.background = "#fafafa";
+            emptyCell.style.border = "1px dashed #eee";
+            daysDiv.appendChild(emptyCell);
+        }
+
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        // Monthly Stats Counters
+        let mTotalCount = 0;
+        let mConfirmedCount = 0;
+        let mInquiryCount = 0;
+        let mHoldCount = 0;
+        let mTotalRev = 0;
+        let mTotalAdv = 0;
+        let mTotalPending = 0;
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${currentYear}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const dayCell = document.createElement("div");
+            dayCell.className = "day";
+            if (dateStr === todayStr) dayCell.classList.add("today");
+
+            const numSpan = document.createElement("div");
+            numSpan.className = "day-number";
+            numSpan.innerText = d;
+            dayCell.appendChild(numSpan);
+
+            const dayEvents = events.filter(e => {
+                const matchesDate = e.date === dateStr;
+                const matchesStatus = (activeStatusFilter === "all" || e.status === activeStatusFilter);
+                const matchesSearch = !searchQuery || 
+                    e.title.toLowerCase().includes(searchQuery) || 
+                    e.client.toLowerCase().includes(searchQuery) ||
+                    (e.phone && e.phone.toLowerCase().includes(searchQuery)) ||
+                    (e.notes && e.notes.toLowerCase().includes(searchQuery)) ||
+                    (e.createdBy && e.createdBy.toLowerCase().includes(searchQuery));
+                return matchesDate && matchesStatus && matchesSearch;
+            });
+
+            dayEvents.forEach(evt => {
+                const evtDiv = document.createElement("div");
+                evtDiv.className = `event ${evt.status}`;
+                evtDiv.innerHTML = `<strong>${evt.title}</strong><small>👤 ${evt.client}</small><small>📞 ${evt.phone || 'N/A'}</small>`;
+                evtDiv.onclick = (e) => {
+                    e.stopPropagation();
+                    openDetailsModal(evt.id);
+                };
+                dayCell.appendChild(evtDiv);
+            });
+
+            dayCell.onclick = () => openAddModal(dateStr);
+            daysDiv.appendChild(dayCell);
+        }
+
+        topContainer.appendChild(daysDiv);
+        monthDiv.appendChild(topContainer);
+
+        // Calculate Monthly History Data
+        const monthPrefix = `${currentYear}-${String(m + 1).padStart(2, '0')}`;
+        const monthAllEvents = events.filter(e => e.date && e.date.startsWith(monthPrefix));
+        
+        monthAllEvents.forEach(e => {
+            mTotalCount++;
+            if (e.status === 'confirmed') mConfirmedCount++;
+            if (e.status === 'inquiry_tentative') mInquiryCount++;
+            if (e.status === 'date_hold') mHoldCount++;
+
+            if (e.status !== 'cancelled') {
+                mTotalRev += Number(e.amount) || 0;
+                mTotalAdv += Number(e.advance) || 0;
+                mTotalPending += Number(e.pending) || 0;
+            }
+        });
+
+        // Monthly Summary Footer with Distinct Colors
+        const summaryDiv = document.createElement("div");
+        summaryDiv.className = "month-summary";
+        summaryDiv.innerHTML = `
+            <div class="summary-title">📊 ${monthNames[m]} History Summary</div>
+            <div class="summary-grid">
+                <div>Total: <strong>${mTotalCount}</strong></div>
+                <div>Confirmed: <strong style="color:#d62828">${mConfirmedCount}</strong></div>
+                <div>Inquiry: <strong style="color:#e4b400">${mInquiryCount}</strong></div>
+                <div>Hold: <strong style="color:#6f42c1">${mHoldCount}</strong></div>
+                <div>Revenue: <strong>BHD ${mTotalRev.toFixed(2)}</strong></div>
+                <div>Advance: <strong style="color:#28a745">BHD ${mTotalAdv.toFixed(2)}</strong></div>
+                <div>Pending: <strong style="color:#d62828">BHD ${mTotalPending.toFixed(2)}</strong></div>
+            </div>
+        `;
+        monthDiv.appendChild(summaryDiv);
+
+        grid.appendChild(monthDiv);
+    }
+
+    updateDashboardStats();
+}
+
+function updateDashboardStats() {
+    let yearEvents = events.filter(e => e.date && e.date.startsWith(`${currentYear}`));
+    if (currentMonthFilter !== "all") {
+        const mStr = String(parseInt(currentMonthFilter) + 1).padStart(2, '0');
+        yearEvents = yearEvents.filter(e => e.date && e.date.startsWith(`${currentYear}-${mStr}`));
+    }
+
+    const confirmed = yearEvents.filter(e => e.status === 'confirmed').length;
+    const tentative = yearEvents.filter(e => e.status === 'inquiry_tentative').length;
+    const hold = yearEvents.filter(e => e.status === 'date_hold').length;
+
+    let totalRev = 0;
+    let totalAdv = 0;
+    let totalPend = 0;
+
+    yearEvents.forEach(e => {
+        if (e.status !== 'cancelled') {
+            totalRev += Number(e.amount) || 0;
+            totalAdv += Number(e.advance) || 0;
+            totalPend += Number(e.pending) || 0;
+        }
+    });
+
+    document.getElementById("statTotal").innerText = yearEvents.length;
+    document.getElementById("statConfirmed").innerText = confirmed;
+    document.getElementById("statTentative").innerText = tentative;
+    document.getElementById("statHold").innerText = hold;
+
+    document.getElementById("statRevenue").innerText = "BHD " + totalRev.toLocaleString('en-US', {minimumFractionDigits: 2});
+    document.getElementById("statAdvance").innerText = "BHD " + totalAdv.toLocaleString('en-US', {minimumFractionDigits: 2});
+    document.getElementById("statPending").innerText = "BHD " + totalPend.toLocaleString('en-US', {minimumFractionDigits: 2});
+}
+
+function openAddModal(dateStr = "") {
+    document.getElementById("eventForm").reset();
+    document.getElementById("eventId").value = "";
+    document.getElementById("modalTitle").innerText = "New Event Booking";
+    if (dateStr) document.getElementById("eventDate").value = dateStr;
+    document.getElementById("eventModal").style.display = "block";
+}
+
+function openDetailsModal(id) {
+    selectedEventId = id;
+    const evt = events.find(e => e.id === id);
+    if (!evt) return;
+
+    let statusTxt = evt.status.toUpperCase();
+    if(evt.status === 'inquiry_tentative') statusTxt = "INQUIRY & TENTATIVE";
+    if(evt.status === 'date_hold') statusTxt = "DATE HOLD";
+
+    // SECURITY PERMISSION CHECK: Admin can edit/delete all. Other users can ONLY edit/delete their OWN created bookings.
+    const btnEdit = document.getElementById("btnEditEvent");
+    const btnDelete = document.getElementById("btnDeleteEvent");
+
+    if (currentUser === "Admin" || (evt.createdBy && evt.createdBy === currentUser)) {
+        btnEdit.style.display = "inline-block";
+        btnDelete.style.display = "inline-block";
+    } else {
+        btnEdit.style.display = "none";
+        btnDelete.style.display = "none";
+    }
+
+    const detailsBody = document.getElementById("detailsBody");
+    detailsBody.innerHTML = `
+        <h3 style="margin:0 0 5px;text-align:center;">Crystal Banquet Hall</h3>
+        <p style="text-align:center;margin:0 0 15px;color:#555;font-size:12px;">Customer Booking Receipt</p>
+        <table>
+            <tr><th>Event Title</th><td>${evt.title}</td></tr>
+            <tr><th>Client Name</th><td>${evt.client}</td></tr>
+            <tr><th>Phone Number</th><td><strong>${evt.phone || 'N/A'}</strong></td></tr>
+            <tr><th>Date & Time</th><td>${evt.date} (${evt.startTime || ''} - ${evt.endTime || ''})</td></tr>
+            <tr><th>Booking Status</th><td><strong>${statusTxt}</strong></td></tr>
+            <tr><th>Guest Count</th><td>${evt.guests || 'N/A'}</td></tr>
+            <tr><th>Price Per Person</th><td>BHD ${Number(evt.perPersonRate || 0).toFixed(3)}</td></tr>
+            <tr><th>Total Price</th><td>BHD ${Number(evt.amount || 0).toFixed(3)}</td></tr>
+            <tr><th>Advance Paid</th><td>BHD ${Number(evt.advance || 0).toFixed(3)}</td></tr>
+            <tr><th>Pending Balance</th><td><strong style="color:#d62828">BHD ${Number(evt.pending || 0).toFixed(3)}</strong></td></tr>
+            <tr><th>Add to Official System Ledger?</th><td><strong>${evt.includeInSystem || 'Yes'}</strong></td></tr>
+            <tr><th>Catering / Notes</th><td>${evt.notes || 'None'}</td></tr>
+            <tr><th>Created By User</th><td><strong>${evt.createdBy || 'Admin'}</strong> (${evt.createdAt ? new Date(evt.createdAt).toLocaleString() : 'N/A'})</td></tr>
+            ${evt.updatedBy ? `<tr><th>Last Updated By</th><td><strong>${evt.updatedBy}</strong> (${new Date(evt.updatedAt).toLocaleString()})</td></tr>` : ''}
+        </table>
+    `;
+
+    document.getElementById("detailsModal").style.display = "block";
+}
+
+function printCustomerReceipt() {
+    window.print();
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = "none";
+}
+
+function saveEvent(e) {
+    e.preventDefault();
+    const id = document.getElementById("eventId").value;
+    
+    const newEvt = {
+        title: document.getElementById("eventTitle").value,
+        client: document.getElementById("clientName").value,
+        phone: document.getElementById("clientPhone").value,
+        date: document.getElementById("eventDate").value,
+        startTime: document.getElementById("startTime").value,
+        endTime: document.getElementById("endTime").value,
+        status: document.getElementById("eventStatus").value,
+        guests: document.getElementById("guestCount").value,
+        perPersonRate: parseFloat(document.getElementById("perPersonRate").value) || 0,
+        amount: parseFloat(document.getElementById("eventAmount").value) || 0,
+        advance: parseFloat(document.getElementById("advanceAmount").value) || 0,
+        pending: parseFloat(document.getElementById("pendingAmount").value) || 0,
+        includeInSystem: document.getElementById("includeInSystem").value,
+        notes: document.getElementById("eventNotes").value
+    };
+
+    if (id) {
+        // Checking Permission before Editing
+        const existingEvt = events.find(e => e.id === id);
+        if (currentUser !== "Admin" && existingEvt && existingEvt.createdBy !== currentUser) {
+            alert("Permission Denied: You can only edit your own bookings!");
+            return;
+        }
+
+        newEvt.updatedBy = currentUser;
+        newEvt.updatedAt = new Date().toISOString();
+        
+        db.collection("bookings").doc(id).update(newEvt).then(() => {
+            closeModal("eventModal");
+        }).catch(err => alert("Error updating event: " + err.message));
+    } else {
+        // New Booking - Stamp with current logged-in user
+        newEvt.createdBy = currentUser;
+        newEvt.createdAt = new Date().toISOString();
+        
+        db.collection("bookings").add(newEvt).then(() => {
+            closeModal("eventModal");
+        }).catch(err => alert("Error saving event: " + err.message));
+    }
+}
+
+function editCurrentEvent() {
+    closeModal("detailsModal");
+    const evt = events.find(e => e.id === selectedEventId);
+    if (!evt) return;
+
+    if (currentUser !== "Admin" && evt.createdBy !== currentUser) {
+        alert("Permission Denied: You cannot edit bookings created by another user!");
+        return;
+    }
+
+    document.getElementById("eventId").value = evt.id;
+    document.getElementById("eventTitle").value = evt.title;
+    document.getElementById("clientName").value = evt.client;
+    document.getElementById("clientPhone").value = evt.phone || "";
+    document.getElementById("eventDate").value = evt.date;
+    document.getElementById("startTime").value = evt.startTime || "";
+    document.getElementById("endTime").value = evt.endTime || "";
+    document.getElementById("eventStatus").value = evt.status;
+    document.getElementById("guestCount").value = evt.guests || "";
+    document.getElementById("perPersonRate").value = evt.perPersonRate || 0;
+    document.getElementById("eventAmount").value = evt.amount || 0;
+    document.getElementById("advanceAmount").value = evt.advance || 0;
+    document.getElementById("pendingAmount").value = evt.pending || 0;
+    document.getElementById("includeInSystem").value = evt.includeInSystem || "Yes";
+    document.getElementById("eventNotes").value = evt.notes || "";
+
+    document.getElementById("modalTitle").innerText = "Edit Booking Details";
+    document.getElementById("eventModal").style.display = "block";
+}
+
+function deleteCurrentEvent() {
+    const evt = events.find(e => e.id === selectedEventId);
+    if (!evt) return;
+
+    if (currentUser !== "Admin" && evt.createdBy !== currentUser) {
+        alert("Permission Denied: You cannot delete bookings created by another user!");
+        return;
+    }
+
+    if (confirm("Are you sure you want to delete this booking?")) {
+        db.collection("bookings").doc(selectedEventId).delete().then(() => {
+            closeModal("detailsModal");
+        }).catch(err => alert("Error deleting event: " + err.message));
+    }
+}
+
+window.onclick = function(event) {
+    const eModal = document.getElementById("eventModal");
+    const dModal = document.getElementById("detailsModal");
+    const lModal = document.getElementById("loginModal");
+    if (event.target === eModal) closeModal("eventModal");
+    if (event.target === dModal) closeModal("detailsModal");
+    if (event.target === lModal) closeModal("loginModal");
+};
+
+init();
+</script>
+</body>
+</html>
