@@ -20,6 +20,29 @@ body{
 button,input,select,textarea{font:inherit}
 button{cursor:pointer}
 
+/* Fullscreen Login Overlay */
+#loginOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 15, 15, 0.92);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(5px);
+}
+.login-card {
+    background: #fff;
+    width: 100%;
+    max-width: 400px;
+    padding: 30px;
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    text-align: center;
+}
+.login-card h2 { margin: 0 0 5px; font-family: Georgia, serif; color: #111; }
+.login-card p { font-size: 13px; color: #666; margin-bottom: 20px; }
+
 .topbar{
     background:#fff;
     border-bottom:1px solid #ddd;
@@ -60,7 +83,7 @@ button{cursor:pointer}
 
 .dashboard{
     display:grid;
-    grid-template-columns:repeat(7,1fr);
+    grid-template-columns:repeat(8,1fr);
     gap:10px;
     margin-bottom:15px;
 }
@@ -68,15 +91,14 @@ button{cursor:pointer}
     background:#fff;
     border:1px solid #e2dfda;
     border-radius:10px;
-    padding:12px;
+    padding:10px 12px;
     cursor:pointer;
     transition:transform 0.1s ease;
 }
 .card:hover{transform:translateY(-2px);box-shadow:0 4px 10px rgba(0,0,0,0.08)}
-.card small{color:#777;font-weight:bold;font-size:11px}
-.card strong{display:block;font-size:18px;margin-top:4px}
+.card small{color:#777;font-weight:bold;font-size:11px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card strong{display:block;font-size:17px;margin-top:4px}
 
-/* Color Legend Styling */
 .top-legend{
     display:flex;
     gap:15px;
@@ -226,6 +248,30 @@ button{cursor:pointer}
 </head>
 <body>
 
+<!-- Mandatory Initial Login Screen -->
+<div id="loginOverlay">
+    <div class="login-card">
+        <h2>Crystal Banquet Hall</h2>
+        <p>Please select user and enter PIN to access</p>
+        <form id="overlayLoginForm" onsubmit="handleInitialLogin(event)">
+            <div class="form-group" style="text-align:left;margin-bottom:12px">
+                <label>User Role</label>
+                <select id="overlayUserSelect" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px">
+                    <option value="Admin">Admin</option>
+                    <option value="MD">MD</option>
+                    <option value="Sales">Sales</option>
+                    <option value="Account">Account</option>
+                </select>
+            </div>
+            <div class="form-group" style="text-align:left;margin-bottom:18px">
+                <label>Password PIN</label>
+                <input type="password" id="overlayPassword" placeholder="Enter PIN" required style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px">
+            </div>
+            <button type="submit" class="gold" style="width:100%;padding:10px;font-size:15px;font-weight:bold">Login</button>
+        </form>
+    </div>
+</div>
+
 <div class="topbar">
     <div class="brand">
         <img src="https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=150&auto=format&fit=crop&q=80" alt="Logo">
@@ -236,7 +282,7 @@ button{cursor:pointer}
     </div>
     <div class="toolbar">
         <div class="user-badge">
-            <span id="activeUserDisplay">👤 Admin</span>
+            <span id="activeUserDisplay">👤 Not Logged In</span>
             <button onclick="openLoginModal()" style="padding:2px 6px;font-size:10px;margin-left:4px">Switch User</button>
         </div>
 
@@ -275,12 +321,13 @@ button{cursor:pointer}
         <span class="legend-item"><span class="legend-dot" style="background:#6c757d"></span> Cancelled</span>
     </div>
 
-    <!-- Dashboard Cards -->
+    <!-- Dashboard Cards (Including Cancelled Card) -->
     <div class="dashboard">
         <div class="card" onclick="filterByStatus('all')"><small>Total Events</small><strong id="statTotal">0</strong></div>
         <div class="card" onclick="filterByStatus('confirmed')"><small>Confirmed</small><strong id="statConfirmed" style="color:#d62828">0</strong></div>
         <div class="card" onclick="filterByStatus('inquiry_tentative')"><small>Inquiry / Tentative</small><strong id="statTentative" style="color:#e4b400">0</strong></div>
         <div class="card" onclick="filterByStatus('date_hold')"><small>Date Hold</small><strong id="statHold" style="color:#6f42c1">0</strong></div>
+        <div class="card" onclick="filterByStatus('cancelled')"><small>Cancelled</small><strong id="statCancelled" style="color:#6c757d">0</strong></div>
         <div class="card" onclick="filterByStatus('all')"><small>Total Revenue</small><strong id="statRevenue" style="color:#b9823e">BHD 0</strong></div>
         <div class="card" onclick="filterByStatus('all')"><small>Advance Paid</small><strong id="statAdvance" style="color:#28a745">BHD 0</strong></div>
         <div class="card" onclick="filterByStatus('all')"><small>Pending Balance</small><strong id="statPending" style="color:#d62828">BHD 0</strong></div>
@@ -304,7 +351,7 @@ button{cursor:pointer}
     <div class="month-grid" id="monthGrid"></div>
 </div>
 
-<!-- Login / User Switch Modal -->
+<!-- Login / User Switch Modal (For Switch User Button) -->
 <div class="modal" id="loginModal">
     <div class="modal-box" style="max-width:380px;">
         <div class="modal-head">
@@ -454,19 +501,23 @@ const userCredentials = {
     "Account": "2222"
 };
 
-let currentUser = "Admin"; // Default Active User
+let currentUser = ""; // Not logged in by default
 
-// Application Variables
-const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+// Handle Initial Screen Fullscreen Login
+function handleInitialLogin(e) {
+    e.preventDefault();
+    const selectedUser = document.getElementById("overlayUserSelect").value;
+    const enteredPass = document.getElementById("overlayPassword").value;
 
-let currentYear = 2026;
-let currentMonthFilter = "all";
-let activeStatusFilter = "all";
-let searchQuery = "";
-let selectedEventId = null;
-
-let events = [];
+    if (userCredentials[selectedUser] === enteredPass) {
+        currentUser = selectedUser;
+        document.getElementById("activeUserDisplay").innerText = "👤 " + currentUser;
+        document.getElementById("loginOverlay").style.display = "none";
+        renderCalendar();
+    } else {
+        alert("Incorrect Password PIN! Please try again.");
+    }
+}
 
 function openLoginModal() {
     document.getElementById("loginPassword").value = "";
@@ -504,6 +555,18 @@ function calculatePending() {
     const adv = parseFloat(document.getElementById("advanceAmount").value) || 0;
     document.getElementById("pendingAmount").value = Math.max(0, total - adv).toFixed(3);
 }
+// Application Variables
+const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+let currentYear = 2026;
+let currentMonthFilter = "all";
+let activeStatusFilter = "all";
+let searchQuery = "";
+let selectedEventId = null;
+
+let events = [];
+
 function listenToFirebaseEvents() {
     db.collection("bookings").onSnapshot((snapshot) => {
         events = [];
@@ -559,6 +622,7 @@ function handleSearch() {
 
 function renderCalendar() {
     const grid = document.getElementById("monthGrid");
+    if(!grid) return;
     grid.innerHTML = "";
 
     document.getElementById("calendarTitle").innerText = `${currentYear} Booking Calendar`;
@@ -600,15 +664,6 @@ function renderCalendar() {
         }
 
         const todayStr = new Date().toISOString().split('T')[0];
-
-        // Monthly Stats Counters
-        let mTotalCount = 0;
-        let mConfirmedCount = 0;
-        let mInquiryCount = 0;
-        let mHoldCount = 0;
-        let mTotalRev = 0;
-        let mTotalAdv = 0;
-        let mTotalPending = 0;
 
         for (let d = 1; d <= daysInMonth; d++) {
             const dateStr = `${currentYear}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -655,11 +710,21 @@ function renderCalendar() {
         const monthPrefix = `${currentYear}-${String(m + 1).padStart(2, '0')}`;
         const monthAllEvents = events.filter(e => e.date && e.date.startsWith(monthPrefix));
         
+        let mTotalCount = 0;
+        let mConfirmedCount = 0;
+        let mInquiryCount = 0;
+        let mHoldCount = 0;
+        let mCancelledCount = 0;
+        let mTotalRev = 0;
+        let mTotalAdv = 0;
+        let mTotalPending = 0;
+
         monthAllEvents.forEach(e => {
             mTotalCount++;
             if (e.status === 'confirmed') mConfirmedCount++;
             if (e.status === 'inquiry_tentative') mInquiryCount++;
             if (e.status === 'date_hold') mHoldCount++;
+            if (e.status === 'cancelled') mCancelledCount++;
 
             if (e.status !== 'cancelled') {
                 mTotalRev += Number(e.amount) || 0;
@@ -678,6 +743,7 @@ function renderCalendar() {
                 <div>Confirmed: <strong style="color:#d62828">${mConfirmedCount}</strong></div>
                 <div>Inquiry: <strong style="color:#e4b400">${mInquiryCount}</strong></div>
                 <div>Hold: <strong style="color:#6f42c1">${mHoldCount}</strong></div>
+                <div>Cancelled: <strong style="color:#6c757d">${mCancelledCount}</strong></div>
                 <div>Revenue: <strong>BHD ${mTotalRev.toFixed(2)}</strong></div>
                 <div>Advance: <strong style="color:#28a745">BHD ${mTotalAdv.toFixed(2)}</strong></div>
                 <div>Pending: <strong style="color:#d62828">BHD ${mTotalPending.toFixed(2)}</strong></div>
@@ -701,6 +767,7 @@ function updateDashboardStats() {
     const confirmed = yearEvents.filter(e => e.status === 'confirmed').length;
     const tentative = yearEvents.filter(e => e.status === 'inquiry_tentative').length;
     const hold = yearEvents.filter(e => e.status === 'date_hold').length;
+    const cancelled = yearEvents.filter(e => e.status === 'cancelled').length;
 
     let totalRev = 0;
     let totalAdv = 0;
@@ -718,6 +785,7 @@ function updateDashboardStats() {
     document.getElementById("statConfirmed").innerText = confirmed;
     document.getElementById("statTentative").innerText = tentative;
     document.getElementById("statHold").innerText = hold;
+    document.getElementById("statCancelled").innerText = cancelled;
 
     document.getElementById("statRevenue").innerText = "BHD " + totalRev.toLocaleString('en-US', {minimumFractionDigits: 2});
     document.getElementById("statAdvance").innerText = "BHD " + totalAdv.toLocaleString('en-US', {minimumFractionDigits: 2});
@@ -725,6 +793,10 @@ function updateDashboardStats() {
 }
 
 function openAddModal(dateStr = "") {
+    if (!currentUser) {
+        alert("Please login first!");
+        return;
+    }
     document.getElementById("eventForm").reset();
     document.getElementById("eventId").value = "";
     document.getElementById("modalTitle").innerText = "New Event Booking";
